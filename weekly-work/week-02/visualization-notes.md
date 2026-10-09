@@ -1,4 +1,5 @@
 Part 1 to 3
+
 3) opening the .csv file directly leads to the content not being displayed in proper columns, whereas importing the files content via excel's 'Data' register immediately recognizes them.
 4) yes 'Köln' for example is shown correctly, regardless of which way you chose to import the data.
 6) an empty cell means that there is no content in it, so zero?
@@ -26,12 +27,14 @@ through a blank cell, does not mean that value is 0 but rather unknown (a blank 
 on a first glance the categories seem consistent
 
 Part 5
+
 string value: 'De herbarum virtutibus'
 numerical value: '1590'
 temporal value: '1581'
 uncertain value: '[1507-12]'
 
 Part 6
+
 i am unsure wether RAWGRAPHS noting 'year' as number is correct or not. (RAWGRAPHS showed 13 values in this category to be faulty)
 
 8. 'Von Sant Meinrat ein Lesen, was Elend und Armut er erlitten hat'; year: '[1507-1512]' vs. year_numerical: '1507'
