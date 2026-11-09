@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Historic Photographs · Local CSV Explorer</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f5f7fa; color: #202d3b; }
+    main { max-width: 1420px; margin: auto; padding: 2rem 1.2rem 3rem; }
+    h1 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 0 0 .4rem; }
+    .intro { max-width: 72ch; color: #526173; line-height: 1.5; margin: 0 0 1.4rem; }
+    .panel { background: white; border: 1px solid #dbe2e9; border-radius: 12px; padding: 1.2rem; box-shadow: 0 2px 12px #1c36550a; }
+    .controls { display: grid; grid-template-columns: minmax(200px, 2fr) repeat(2, minmax(160px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .field { display: flex; flex-direction: column; min-width: 0; gap: .35rem; }
+    label, .file-label { font-weight: 650; font-size: .91rem; }
+    input, select { width: 100%; min-height: 42px; border-radius: 7px; border: 1px solid #9eacbc; background: #fff; padding: .55rem .7rem; font: inherit; color: inherit; }
+    input[type=file] { padding: .5rem; max-width: 100%; }
+    input:focus-visible, select:focus-visible, button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+    :disabled { opacity: .55; cursor: not-allowed; }
+    .note { color: #57667a; font-size: .88rem; margin: .55rem 0 0; }
+    .status { margin: 1rem 0; padding: .8rem 1rem; border-radius: 8px; background: #eaf1fa; color: #213951; }
+    .status.error { background: #fff0ef; color: #86241b; border: 1px solid #e9b5b0; }
+    .summary { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .8rem; margin: 1.35rem 0 .6rem; }
+    .summary h2 { font-size: 1.14rem; margin: 0; }
+    #recordCount { font-weight: 650; font-variant-numeric: tabular-nums; }
+    .table-wrap { overflow: auto; max-height: 70vh; border: 1px solid #cbd5e1; border-radius: 9px; background: white; }
+    table { border-collapse: separate; border-spacing: 0; min-width: 100%; width: max-content; font-size: .9rem; }
+    thead th { position: sticky; top: 0; z-index: 2; background: #e8eef5; text-align: left; border-bottom: 2px solid #b6c4d3; }
+    th, td { padding: .66rem .8rem; border-right: 1px solid #e6ebf1; border-bottom: 1px solid #e8edf2; vertical-align: top; max-width: 340px; }
+    td { white-space: pre-wrap; overflow-wrap: anywhere; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody tr:hover { background: #edf5ff; }
+    .sort { display: inline-flex; align-items: center; gap: .4rem; border: 0; background: transparent; color: #182d44; font: inherit; font-weight: 700; padding: .25rem 0; cursor: pointer; text-align: left; }
+    .sort:hover { text-decoration: underline; }
+    .sort-indicator { color: #355b80; min-width: 1em; }
+    .empty { padding: 1.25rem; color: #546577; }
+    footer { margin-top: 1rem; color: #657388; font-size: .87rem; line-height: 1.5; }
+    [hidden] { display: none !important; }
+    @media (max-width: 760px) { main { padding: 1.2rem .7rem; } .panel { padding: 1rem; } .controls { grid-template-columns: 1fr; } .table-wrap { max-height: 65vh; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Historic Photographs · CSV Explorer</h1>
+  <p class="intro">Explore the original metadata records from a local copy of <strong>historic_photographs_sample_dataset.csv</strong>. Search every column, filter by country or object type, and sort by any heading. Your file stays in this browser and is never uploaded.</p>
+
+  <section class="panel" aria-label="CSV file and filters">
+    <div class="field">
+      <label for="csvFile">Choose a CSV file from your computer</label>
+      <input id="csvFile" type="file" accept=".csv,text/csv,text/plain" aria-describedby="fileHelp">
+      <p id="fileHelp" class="note">UTF-8 CSV, with headers in the first row. Commas and line breaks inside quoted cells are supported.</p>
+    </div>
+    <div class="controls">
+      <div class="field">
+        <label for="searchInput">Search all fields</label>
+        <input id="searchInput" type="search" placeholder="Title, creator, date, note…" disabled>
+      </div>
+      <div class="field">
+        <label for="countryFilter">Country (country_raw)</label>
+        <select id="countryFilter" disabled><option value="">All countries</option></select>
+      </div>
+      <div class="field">
+        <label for="typeFilter">Object type (object_type_raw)</label>
+        <select id="typeFilter" disabled><option value="">All object types</option></select>
+      </div>
+    </div>
+    <p class="note">Filter dropdowns use the original values exactly. For example, differing capitalization or extra spaces remain distinct choices.</p>
+  </section>
+
+  <div id="status" class="status" role="status" aria-live="polite">Choose a local CSV to begin.</div>
+  <section id="results" hidden aria-label="CSV results">
+    <div class="summary">
+      <h2>Photograph metadata records</h2>
+      <span id="recordCount" role="status" aria-live="polite"></span>
+    </div>
+    <p id="tableHelp" class="note">Scroll sideways to view more columns. Select a column heading to sort ascending; select it again to sort descending. Use Tab and Enter or Space to operate the heading buttons.</p>
+    <div class="table-wrap" role="region" aria-label="Scrollable photograph metadata table" tabindex="0" aria-describedby="tableHelp">
+      <table id="dataTable">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <p id="emptyMessage" class="empty" hidden>No records match these search and filter choices.</p>
+  </section>
+  <footer>All CSV values are displayed as literal text, not interpreted as HTML. This viewer performs no historical standardization of names, places, or dates.</footer>
+</main>
+<script>
+  "use strict";
+
+  // Local processing only: no fetch(), network requests, uploads, or external libraries.
+  const fileInput = document.getElementById("csvFile");
+  const searchInput = document.getElementById("searchInput");
+  const countryFilter = document.getElementById("countryFilter");
+  const typeFilter = document.getElementById("typeFilter");
+  const status = document.getElementById("status");
+  const results = document.getElementById("results");
+  const tableHead = document.getElementById("tableHead");
+  const tableBody = document.getElementById("tableBody");
+  const recordCount = document.getElementById("recordCount");
+  const emptyMessage = document.getElementById("emptyMessage");
+
+  let headers = [];
+  let records = [];
+  let sortColumn = -1;
+  let sortDirection = 1;
+  const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
+  // A small CSV parser that understands quoted commas, escaped quotes (""),
+  // CRLF/LF newlines, and quoted multiline fields. It never trims cell contents.
+  // Invalid quoting is reported rather than silently changing data.
+  function parseCSV(text) {
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // Remove file-level UTF-8 BOM only.
+    if (!text.length) throw new Error("The selected CSV file is empty.");
+
+    const rows = [];
+    let row = [], cell = "", inQuotes = false, quoteClosed = false, atFieldStart = true;
+    let line = 1;
+
+    function finishCell() {
+      row.push(cell);
+      cell = "";
+      atFieldStart = true;
+      quoteClosed = false;
+    }
+    function finishRow() {
+      finishCell();
+      rows.push(row);
+      row = [];
+    }
+
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { cell += '"'; i++; }
+          else { inQuotes = false; quoteClosed = true; }
+        } else if (c === "\r" || c === "\n") {
+          // Normalize CSV line ending syntax, not the cell contents: keep actual source newline.
+          if (c === "\r" && text[i + 1] === "\n") { cell += "\r\n"; i++; }
+          else cell += c;
+          line++;
+        } else cell += c;
+      } else {
+        if (c === '"') {
+          if (!atFieldStart) throw new Error(`Malformed CSV: unexpected quote near line ${line}.`);
+          inQuotes = true;
+          atFieldStart = false;
+        } else if (c === ",") {
+          finishCell();
+        } else if (c === "\r" || c === "\n") {
+          finishRow();
+          if (c === "\r" && text[i + 1] === "\n") i++;
+          line++;
+        } else {
+          if (quoteClosed) throw new Error(`Malformed CSV: text after a closing quote near line ${line}.`);
+          cell += c;
+          atFieldStart = false;
+        }
+      }
+    }
+    if (inQuotes) throw new Error(`Malformed CSV: a quoted cell is not closed (near line ${line}).`);
+    // Avoid counting an extra blank row when the file ends with a newline.
+    if (row.length || cell !== "" || !atFieldStart || quoteClosed) finishRow();
+    if (!rows.length) throw new Error("The CSV contains no header row.");
+
+    const width = rows[0].length;
+    if (width === 1 && !rows[0][0]) throw new Error("The CSV has an empty header row.");
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].length !== width) {
+        throw new Error(`Malformed CSV: row ${i + 1} has ${rows[i].length} fields; expected ${width}. Check commas and quotation marks.`);
+      }
+    }
+    return rows;
+  }
+
+  function setStatus(message, error = false) {
+    status.textContent = message;
+    status.classList.toggle("error", error);
+  }
+
+  function resetView() {
+    headers = [];
+    records = [];
+    sortColumn = -1;
+    sortDirection = 1;
+    results.hidden = true;
+    [searchInput, countryFilter, typeFilter].forEach(control => control.disabled = true);
+    searchInput.value = "";
+    countryFilter.replaceChildren(new Option("All countries", ""));
+    typeFilter.replaceChildren(new Option("All object types", ""));
+    tableHead.replaceChildren();
+    tableBody.replaceChildren();
+  }
+
+  // Build dropdown values from the exact, unchanged strings in the input file.
+  // The option value is an integer index, so an actual CSV value cannot collide
+  // with the special "All" option (including if the actual cell is empty).
+  function buildFilter(select, columnIndex, allLabel) {
+    const values = Array.from(new Set(records.map(row => row[columnIndex])));
+    values.sort((a, b) => collator.compare(a, b) || (a < b ? -1 : a > b ? 1 : 0));
+    select.replaceChildren(new Option(allLabel, ""));
+    values.forEach((value, index) => {
+      const option = new Option(value === "" ? "(empty value)" : value, String(index));
+      select.add(option);
+    });
+    select._originalValues = values;
+  }
+
+  function renderHeader() {
+    const tr = document.createElement("tr");
+    headers.forEach((name, index) => {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.setAttribute("aria-sort", sortColumn === index ? (sortDirection === 1 ? "ascending" : "descending") : "none");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sort";
+      button.setAttribute("aria-label", `Sort by ${name}${sortColumn === index ? (sortDirection === 1 ? ", currently ascending" : ", currently descending") : ""}`);
+      const label = document.createElement("span");
+      label.textContent = name;
+      const indicator = document.createElement("span");
+      indicator.className = "sort-indicator";
+      indicator.setAttribute("aria-hidden", "true");
+      indicator.textContent = sortColumn === index ? (sortDirection === 1 ? "▲" : "▼") : "↕";
+      button.append(label, indicator);
+      button.addEventListener("click", () => {
+        if (sortColumn === index) sortDirection *= -1;
+        else { sortColumn = index; sortDirection = 1; }
+        render();
+      });
+      th.append(button);
+      tr.append(th);
+    });
+    tableHead.replaceChildren(tr);
+  }
+
+  function render() {
+    const needle = searchInput.value.toLocaleLowerCase();
+    const countryIndex = headers.indexOf("country_raw");
+    const typeIndex = headers.indexOf("object_type_raw");
+    const selectedCountry = countryFilter.value === "" ? null : countryFilter._originalValues[Number(countryFilter.value)];
+    const selectedType = typeFilter.value === "" ? null : typeFilter._originalValues[Number(typeFilter.value)];
+
+    // Keyword search spans every displayed field, without altering original strings.
+    const matches = records.filter(row =>
+      (selectedCountry === null || row[countryIndex] === selectedCountry) &&
+      (selectedType === null || row[typeIndex] === selectedType) &&
+      (!needle || row.some(value => value.toLocaleLowerCase().includes(needle)))
+    );
+
+    if (sortColumn >= 0) {
+      matches.sort((a, b) => sortDirection * collator.compare(a[sortColumn], b[sortColumn]));
+    }
+
+    renderHeader();
+    const fragment = document.createDocumentFragment();
+    for (const row of matches) {
+      const tr = document.createElement("tr");
+      for (const value of row) {
+        const td = document.createElement("td");
+        td.textContent = value; // Important: never interpret CSV content as HTML.
+        tr.append(td);
+      }
+      fragment.append(tr);
+    }
+    tableBody.replaceChildren(fragment);
+    recordCount.textContent = `${matches.length.toLocaleString()} visible / ${records.length.toLocaleString()} total records`;
+    emptyMessage.hidden = matches.length !== 0;
+  }
+
+  fileInput.addEventListener("change", async () => {
+    resetView();
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) { setStatus("Choose a local CSV to begin."); return; }
+    setStatus(`Reading ${file.name} locally…`);
+    try {
+      // TextDecoder defaults to UTF-8; fatal mode flags invalid UTF-8 bytes.
+      const bytes = await file.arrayBuffer();
+      const content = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      const csvRows = parseCSV(content);
+      const candidateHeaders = csvRows[0];
+      const required = ["country_raw", "object_type_raw"];
+      const missing = required.filter(column => !candidateHeaders.includes(column));
+      if (missing.length) {
+        throw new Error(`Expected column(s) missing: ${missing.join(", ")}. Check that the CSV has a header row with these exact names. Found: ${candidateHeaders.join(", ")}.`);
+      }
+      if (new Set(candidateHeaders).size !== candidateHeaders.length) {
+        throw new Error("The CSV has duplicate column names. Please use unique names in the header row.");
+      }
+      headers = candidateHeaders;
+      records = csvRows.slice(1);
+      buildFilter(countryFilter, headers.indexOf("country_raw"), "All countries");
+      buildFilter(typeFilter, headers.indexOf("object_type_raw"), "All object types");
+      [searchInput, countryFilter, typeFilter].forEach(control => control.disabled = false);
+      results.hidden = false;
+      render();
+      setStatus(`Loaded ${file.name} successfully. All processing stays on your device.`);
+    } catch (error) {
+      resetView();
+      setStatus(error instanceof Error ? error.message : "Unable to read this CSV file.", true);
+    }
+  });
+
+  searchInput.addEventListener("input", render);
+  countryFilter.addEventListener("change", render);
+  typeFilter.addEventListener("change", render);
+</script>
+</body>
+</html>

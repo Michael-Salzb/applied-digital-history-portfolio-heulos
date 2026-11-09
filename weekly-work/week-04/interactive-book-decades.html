@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recorded editions by decade | Digital History</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:#f5f7fa; color:#192b3d; }
+    * { box-sizing: border-box; }
+    body { margin:0; line-height:1.5; }
+    main { max-width:1100px; margin:0 auto; padding:2.5rem 1.25rem 4rem; }
+    h1 { font-size:clamp(1.7rem, 4vw, 2.5rem); line-height:1.2; margin:.25rem 0 1rem; }
+    h2 { font-size:1.2rem; margin:0 0 .7rem; }
+    p { margin:.4rem 0 1rem; }
+    .eyebrow { color:#275b85; font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.12em; }
+    .intro { color:#526579; max-width:75ch; }
+    .panel { background:white; border:1px solid #dce3e9; border-radius:14px; padding:1.4rem; margin-top:1.3rem; box-shadow:0 2px 12px #152b3d08; }
+    .file-label { display:block; font-weight:650; margin-bottom:.6rem; }
+    input[type=file] { width:100%; max-width:540px; border:1px dashed #9db1c2; padding:1rem; border-radius:9px; background:#f8fbfd; font:inherit; }
+    input:focus-visible, button:focus-visible { outline:3px solid #ad6500; outline-offset:3px; }
+    .hint, .note { color:#526579; font-size:.94rem; }
+    .error { padding:.9rem 1rem; background:#fff1ef; border-left:4px solid #ad3530; color:#84251f; border-radius:5px; margin-top:1rem; }
+    .summary { font-size:1rem; font-weight:600; }
+    .chart-wrap { overflow-x:auto; padding-bottom:.4rem; }
+    svg { display:block; height:auto; max-width:none; }
+    .chart-bar { fill:#28649a; cursor:pointer; transition:fill .15s; }
+    .chart-bar:hover, .chart-bar:focus { fill:#bc7223; outline:none; }
+    .chart-bar.selected { fill:#ae5921; stroke:#68350f; stroke-width:2; }
+    .chart-bar:focus-visible { stroke:#1b293d; stroke-width:3; }
+    .tick-label, .axis-label, .count-label { fill:#263e51; font-family:system-ui, sans-serif; }
+    .grid-line { stroke:#e2e8ed; stroke-width:1; }
+    .axis-line { stroke:#667b8d; stroke-width:1.25; }
+    #selection { min-height:2.3rem; margin-top:.65rem; padding:.5rem .7rem; background:#edf4fb; border-radius:6px; }
+    .table-scroll { overflow-x:auto; }
+    table { border-collapse:collapse; width:100%; }
+    th, td { padding:.7rem .8rem; border-bottom:1px solid #e1e7ec; text-align:left; }
+    th { background:#f3f7fa; color:#263e51; }
+    td:last-child, th:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+    tbody tr.active { background:#ffedce; }
+    tbody tr:hover { background:#f0f5fa; }
+    button { background:#e8f0f9; border:1px solid #adc4d8; color:#174b79; border-radius:6px; font:inherit; padding:.25rem .55rem; cursor:pointer; }
+    button:hover { background:#d7e7f7; }
+    .footnote { margin-top:1.25rem; padding-top:1rem; border-top:1px solid #e0e7ec; color:#526579; }
+    [hidden] { display:none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">Digital History · Local data explorer</div>
+  <h1>Recorded editions in the teaching sample, by decade</h1>
+  <p class="intro">Choose your local <strong>book-sample.csv</strong>. This page counts edition records using the existing <code>decade</code> column. It does <strong>not</strong> measure total historical book production or readership.</p>
+
+  <section class="panel" aria-labelledby="upload-title">
+    <h2 id="upload-title">1. Choose your CSV</h2>
+    <label class="file-label" for="csv-file">Local CSV file</label>
+    <input id="csv-file" type="file" accept=".csv,text/csv">
+    <p class="hint">Your file is processed entirely in this browser. No file contents are uploaded, and no internet connection or external libraries are needed.</p>
+    <div id="error" class="error" role="alert" hidden></div>
+  </section>
+
+  <section class="panel" id="results" aria-label="Results" hidden>
+    <p id="summary" class="summary" role="status"></p>
+    <h2>2. Interactive bar chart</h2>
+    <p class="note" id="chart-instructions">Each bar represents a decade. Its height and number above it show the count of recorded editions in this teaching sample. Hover over, click, or keyboard-focus a bar for details; press Enter or Space to select it. The numerical axis starts at zero. Scroll horizontally if needed.</p>
+    <div class="chart-wrap" id="chart-wrap">
+      <svg id="chart" role="group" aria-label="Bar chart of recorded editions in the teaching sample by decade" aria-describedby="chart-instructions"></svg>
+    </div>
+    <p id="selection" aria-live="polite" aria-atomic="true">Choose a bar to inspect its count.</p>
+    <h2 style="margin-top:1.4rem">3. Aggregated decade counts</h2>
+    <div class="table-scroll">
+      <table aria-label="Count of recorded editions by decade">
+        <thead><tr><th scope="col">Decade</th><th scope="col">Recorded edition count</th></tr></thead>
+        <tbody id="counts-body"></tbody>
+        <tfoot><tr><th scope="row">Total records</th><th id="total-count"></th></tr></tfoot>
+      </table>
+    </div>
+    <p class="footnote">Interpretation: the unit of observation in the CSV is one recorded edition; after grouping, it is one decade category. Counts reflect this selected teaching sample, which may be incomplete or unevenly documented. “Missing decade” is displayed when the CSV contains blank decade cells.</p>
+  </section>
+</main>
+<script>
+"use strict";
+
+const fileInput = document.getElementById("csv-file");
+const errorBox = document.getElementById("error");
+const results = document.getElementById("results");
+const svg = document.getElementById("chart");
+const selection = document.getElementById("selection");
+const tableBody = document.getElementById("counts-body");
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// A small CSV parser, including quoted fields, doubled quotation marks,
+// commas inside quoted titles, and line breaks inside quoted fields.
+// Invalid quotation marks and rows with the wrong number of fields are errors.
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = "", state = "start", line = 1;
+  const source = text.replace(/^\uFEFF/, ""); // Strip a UTF-8 BOM if present.
+
+  function finishField() { row.push(field); field = ""; state = "start"; }
+  function finishRow() {
+    finishField();
+    // Ignore truly blank lines, not legitimate rows with empty cells.
+    if (row.length !== 1 || row[0].trim() !== "") rows.push(row);
+    row = [];
+  }
+
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    if (state === "quoted") {
+      if (c === '"') {
+        if (source[i + 1] === '"') { field += '"'; i++; }
+        else state = "afterQuote";
+      } else if (c === "\r" && source[i + 1] === "\n") {
+        field += "\n"; i++; line++;
+      } else { field += c; if (c === "\n" || c === "\r") line++; }
+    } else if (c === ",") {
+      finishField();
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && source[i + 1] === "\n") i++;
+      finishRow(); line++;
+    } else if (state === "start" && c === '"') {
+      state = "quoted";
+    } else if (c === '"') {
+      throw new Error(`Malformed CSV near line ${line}: unexpected quotation mark.`);
+    } else if (state === "afterQuote") {
+      // Harmless whitespace between a closing quote and a comma is accepted.
+      if (c !== " " && c !== "\t") throw new Error(`Malformed CSV near line ${line}: text after a closing quotation mark.`);
+    } else {
+      field += c; state = "plain";
+    }
+  }
+  if (state === "quoted") throw new Error("Malformed CSV: an opening quotation mark was never closed.");
+  if (state !== "start" || row.length > 0 || field !== "") finishRow();
+  if (rows.length === 0) throw new Error("The selected CSV is empty.");
+  const header = rows[0].map(h => h.trim());
+  if (!header.includes("decade")) throw new Error('The CSV has no "decade" column. Check the header row and choose the correct file.');
+  if (new Set(header).size !== header.length) throw new Error("Malformed CSV: duplicate column names in the header.");
+  rows.slice(1).forEach((r, index) => {
+    if (r.length !== header.length) throw new Error(`Malformed CSV: data row ${index + 1} has ${r.length} fields; expected ${header.length}. Check quotation marks and commas.`);
+  });
+  return { header, rows: rows.slice(1) };
+}
+
+// Turn each CSV record into one count in its existing decade category.
+// Blank categories are kept as a separate "Missing decade" category.
+function aggregateByDecade(parsed) {
+  const index = parsed.header.indexOf("decade");
+  const counts = new Map();
+  parsed.rows.forEach(row => {
+    const label = row[index].trim() || "Missing decade";
+    counts.set(label, (counts.get(label) || 0) + 1);
+  });
+  const entries = [...counts].map(([decade, count]) => ({ decade, count }));
+  function startYear(label) {
+    const match = /^(\d{1,4})s$/.exec(label);
+    return match ? Number(match[1]) : Infinity;
+  }
+  entries.sort((a, b) => startYear(a.decade) - startYear(b.decade) ||
+    (a.decade === "Missing decade" ? 1 : b.decade === "Missing decade" ? -1 : a.decade.localeCompare(b.decade)));
+  return entries;
+}
+
+function makeSVG(tag, attrs, text) {
+  const node = document.createElementNS(SVG_NS, tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => node.setAttribute(k, String(v)));
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// Choose integer axis ticks; every count is an integer.
+function niceStep(maxCount) {
+  const raw = Math.max(1, maxCount / 5);
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
+  return [1, 2, 5, 10].map(x => x * magnitude).find(x => x >= raw) || 10 * magnitude;
+}
+
+function renderChart(entries) {
+  svg.replaceChildren();
+  const left = 67, top = 39, right = 28, bottom = 112;
+  const plotHeight = 330;
+  const plotWidth = Math.max(610, entries.length * 72);
+  const width = left + plotWidth + right;
+  const height = top + plotHeight + bottom;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", width);
+  svg.setAttribute("height", height);
+  svg.append(
+    makeSVG("title", {}, "Recorded editions in the teaching sample by decade"),
+    makeSVG("desc", {}, "Counts from the selected CSV, in chronological order. Each bar starts at zero. Exact counts also appear in the accessible data table below.")
+  );
+  const maxCount = Math.max(0, ...entries.map(e => e.count));
+  const step = niceStep(maxCount);
+  const axisMax = Math.max(step, Math.ceil((maxCount + Math.max(1, maxCount * 0.1)) / step) * step);
+  const y = count => top + plotHeight - (count / axisMax) * plotHeight;
+
+  // Horizontal grid lines and labelled numerical axis (starting at zero).
+  for (let tick = 0; tick <= axisMax; tick += step) {
+    const yy = y(tick);
+    svg.append(makeSVG("line", { x1:left, y1:yy, x2:width-right, y2:yy, class:"grid-line" }));
+    svg.append(makeSVG("text", { x:left-10, y:yy+4, "text-anchor":"end", class:"tick-label", "font-size":12 }, tick));
+  }
+  svg.append(makeSVG("line", { x1:left, y1:top, x2:left, y2:y(0), class:"axis-line" }));
+  svg.append(makeSVG("text", { x:19, y:top+plotHeight/2, transform:`rotate(-90 19 ${top+plotHeight/2})`, "text-anchor":"middle", class:"axis-label", "font-size":13 }, "Recorded editions (count)"));
+  svg.append(makeSVG("text", { x:left+plotWidth/2, y:height-9, "text-anchor":"middle", class:"axis-label", "font-size":13 }, "Decade"));
+
+  const slot = plotWidth / Math.max(1, entries.length);
+  const barWidth = Math.min(48, slot * .65);
+  const rects = [];
+  const tableRows = [...tableBody.querySelectorAll("tr")];
+  let selectedIndex = -1;
+
+  function select(index) {
+    selectedIndex = index;
+    rects.forEach((rect, i) => {
+      rect.classList.toggle("selected", i === index);
+      rect.setAttribute("aria-pressed", String(i === index));
+    });
+    tableRows.forEach((tr, i) => tr.classList.toggle("active", i === index));
+    const item = entries[index];
+    selection.textContent = `${item.decade}: ${item.count} recorded edition${item.count === 1 ? "" : "s"} in the teaching sample.`;
+  }
+
+  entries.forEach((item, i) => {
+    const xCenter = left + (i + .5) * slot;
+    const barHeight = (item.count / axisMax) * plotHeight;
+    const bar = makeSVG("rect", {
+      x:xCenter-barWidth/2, y:y(item.count), width:barWidth,
+      height:Math.max(0, barHeight), rx:3, class:"chart-bar",
+      tabindex:0, role:"button", "aria-pressed":"false",
+      "aria-label":`${item.decade}, ${item.count} recorded editions. Press Enter to select.`
+    });
+    bar.addEventListener("click", () => select(i));
+    bar.addEventListener("focus", () => { selection.textContent = `${item.decade}: ${item.count} recorded editions. Press Enter or Space to select.`; });
+    bar.addEventListener("mouseenter", () => { selection.textContent = `${item.decade}: ${item.count} recorded editions in the teaching sample.`; });
+    bar.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(i); }
+      if (event.key === "ArrowRight" && rects[i+1]) { event.preventDefault(); rects[i+1].focus(); }
+      if (event.key === "ArrowLeft" && rects[i-1]) { event.preventDefault(); rects[i-1].focus(); }
+    });
+    rects.push(bar);
+    svg.append(bar);
+    // The count above each bar helps visual inspection without interaction.
+    svg.append(makeSVG("text", {x:xCenter, y:y(item.count)-7, "text-anchor":"middle", class:"count-label", "font-size":12, "font-weight":650}, item.count));
+    svg.append(makeSVG("text", {x:xCenter, y:y(0)+18, "text-anchor":"end", transform:`rotate(-45 ${xCenter} ${y(0)+18})`, class:"tick-label", "font-size":12}, item.decade));
+  });
+}
+
+function renderTable(entries, total) {
+  tableBody.replaceChildren();
+  entries.forEach(item => {
+    const tr = document.createElement("tr");
+    const labelCell = document.createElement("th");
+    labelCell.scope = "row";
+    labelCell.textContent = item.decade;
+    const countCell = document.createElement("td");
+    countCell.textContent = String(item.count);
+    tr.append(labelCell, countCell);
+    tableBody.append(tr);
+  });
+  document.getElementById("total-count").textContent = String(total);
+}
+
+// Read the local file only after the person chooses it. No network calls.
+fileInput.addEventListener("change", async () => {
+  errorBox.hidden = true;
+  errorBox.textContent = "";
+  results.hidden = true;
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  try {
+    const parsed = parseCSV(await file.text());
+    const entries = aggregateByDecade(parsed);
+    const total = parsed.rows.length;
+    if (entries.reduce((sum, entry) => sum + entry.count, 0) !== total) {
+      throw new Error("Validation failed: decade counts do not add up to the number of records.");
+    }
+    if (total === 0) throw new Error("The CSV contains a header but no edition records.");
+    document.getElementById("summary").textContent = `${total.toLocaleString()} recorded editions · ${entries.length} decade categor${entries.length === 1 ? "y" : "ies"} · Source: ${file.name}`;
+    selection.textContent = "Choose a bar to inspect its count.";
+    renderTable(entries, total);
+    renderChart(entries);
+    results.hidden = false;
+  } catch (error) {
+    errorBox.textContent = `Could not read the CSV: ${error.message}`;
+    errorBox.hidden = false;
+  }
+});
+</script>
+</body>
+</html>
