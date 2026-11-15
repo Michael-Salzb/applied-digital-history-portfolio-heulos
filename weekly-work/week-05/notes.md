@@ -89,17 +89,20 @@ Step 2:
 15_pol_1845
 "... of every man who lives upon our soil, whether of native or foreign birth; of every religious sect, ..."
 appears to refer to immigrants.
-helpful words: soil, native, birth
+helpful words: soil, native, birth  
+
 contrast
 
 12_jackson_1833
 "... to the confidence and affections of the American people. Finally ..."
 appears to refer to the US population
-helpful words: American
+helpful words: American  
+
 positive
 
 34_harding_1921
 "... and the righteousness of representative democracy, where our freedom never has made offensive warfare, ..."
 appears to refer to the freedom of the Nation
-helpful words: our
+helpful words: our  
+
 positive
