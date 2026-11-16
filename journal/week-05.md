@@ -6,4 +6,5 @@ In my mind therefore one would have to use a rather uniform set of texts, otherw
 If (and it is probably possible) one can get the Trend tab to show the results chronologically the research and analysis benefits heavily.
 Questions like "How has the use of X changed over time? (quantity as well as quality)" or "How can spikes in relative/raw frequency be traced back to or linked to historical events?"
 
+Voyant might be better suited for helping formulate your research question rather than answering them; especially if chronological trends can be made visible.
 Overall, it might just be a "me-problem" so i'm very curious already about what the others in class have to say.
