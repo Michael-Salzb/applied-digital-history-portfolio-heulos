@@ -103,6 +103,15 @@ positive
 34_harding_1921
 "... and the righteousness of representative democracy, where our freedom never has made offensive warfare, ..."
 appears to refer to the freedom of the Nation
-helpful words: our  
+helpful word: our  
 
 positive
+
+
+PART 10
+
+For my small investigation I chose "In what contexts do speakers use freedom and liberty?" from the sample questions. In order to find possible answers I looked at the Trends tab to find major spikes in the graph (since the graph doesnt list the speeches chronologically looking at developments is hard). Interesting Finds include:   
+a massive spike in relative frequency of both freedom and liberty for George W. Bush`s inaugural speech from 2005.  
+Multiple speeches that used neither freedom nor liberty (e.g. 20_lincoln_1865, 7_madison_1813)  
+multiple speeches where liberty and freedom have an almost identical relative frequency, so are very close together.  
+Further investigation of these occurrences through the contexts tab showed, that George W. Bush in his 2005 speech for example, often used liberty and freedom in combination or in following sentences. Looking at Obama's 2013 inaugural speech a shift can be seen: Whereas Bush talked of the Liberty and Freedom of the United States of America, and a certain duty and work tied to it, Obama refers on multiple occasions to the individual freedom and liberty of every person on earth. A stark contrast can be seen when following up these speeches with a closer inspection of Thomas Jefferson's speech from 1801 where he uses the terms liberty and freedom in very colorful language.
